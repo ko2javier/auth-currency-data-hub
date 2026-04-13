@@ -41,4 +41,12 @@ public class JwtService {
             return false;
         }
     }
+    public String extractUsername(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(getSigningKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .getSubject(); // Esto extrae el username que pusiste en setSubject()
+    }
 }

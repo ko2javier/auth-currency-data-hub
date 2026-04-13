@@ -24,7 +24,6 @@ public class AuthController {
         }
         return ResponseEntity.status(401).body("Invalid credentials");
     }
-
     @PostMapping("/validate")
     public ResponseEntity<?> validateToken(@RequestHeader("Authorization") String header) {
 
@@ -35,7 +34,10 @@ public class AuthController {
         String token = header.substring(7);
 
         if (jwtService.isValid(token)) {
-            return ResponseEntity.ok("Valid");
+            // Extraemos el username del token
+            String username = jwtService.extractUsername(token);
+            // Devolvemos el nombre del usuario en lugar de "Valid"
+            return ResponseEntity.ok(username);
         }
 
         return ResponseEntity.status(401).body("Invalid token");
