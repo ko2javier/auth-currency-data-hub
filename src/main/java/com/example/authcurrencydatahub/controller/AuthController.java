@@ -3,6 +3,7 @@ package com.example.authcurrencydatahub.controller;
 import com.example.authcurrencydatahub.dto.AuthRequest;
 import com.example.authcurrencydatahub.model.User;
 import com.example.authcurrencydatahub.repository.UserRepository;
+import com.example.authcurrencydatahub.service.AuthService;
 import com.example.authcurrencydatahub.service.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -22,6 +23,7 @@ public class AuthController {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final AuthService authService;
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody AuthRequest request) {
@@ -57,5 +59,11 @@ public class AuthController {
             return ResponseEntity.ok(username);
         }
         return ResponseEntity.status(401).body("Invalid token");
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<String> logout(@RequestHeader("Authorization") String token) {
+        authService.logout(token);
+        return ResponseEntity.ok("Sesión cerrada exitosamente y token revocado.");
     }
 }
