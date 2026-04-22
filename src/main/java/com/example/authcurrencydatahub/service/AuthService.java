@@ -13,7 +13,8 @@ public class AuthService {
     private final StringRedisTemplate redisTemplate;
 
     // El secreto debe ser el mismo para poder leer la expiración
-    private String secret = "my-super-secret-key-12345678901234567890";
+    @org.springframework.beans.factory.annotation.Value("${jwt.secret}")
+    private String secret;
 
     public AuthService(StringRedisTemplate redisTemplate) {
         this.redisTemplate = redisTemplate;
