@@ -20,5 +20,5 @@ jobs:
             cd ~/server-infrastructure/portfolio-backend/auth-currency-data-hub
             git pull
             cd ..
-            docker compose rm -f auth-service
-            docker compose up --build -d auth-service
+            docker-compose rm -f auth-service
+            docker-compose up --build -d auth-service
