@@ -1,10 +1,12 @@
 package com.example.authcurrencydatahub.controller;
 
 import com.example.authcurrencydatahub.dto.AuthRequest;
+import com.example.authcurrencydatahub.kafka.KafkaEventProducer;
 import com.example.authcurrencydatahub.model.User;
 import com.example.authcurrencydatahub.repository.UserRepository;
 import com.example.authcurrencydatahub.service.AuthService;
 import com.example.authcurrencydatahub.service.JwtService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,9 +26,10 @@ public class AuthController {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthService authService;
+    private final KafkaEventProducer kafkaEventProducer;
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody AuthRequest request) {
+    public ResponseEntity<?> login(@RequestBody AuthRequest request, HttpServletRequest httpRequest) {
 
         Optional<User> userOptional = userRepository.findByUsername(request.getUsername());
 
@@ -38,14 +41,24 @@ public class AuthController {
                         .map(role -> role.getName())
                         .collect(Collectors.toList());
 
-                // 2. Generamos el token pasándole el username y los roles
                 String token = jwtService.generateToken(user.getUsername(), roles);
+
+                String clientIp = resolveClientIp(httpRequest);
+                kafkaEventProducer.publishUserLogin(user.getUsername(), clientIp);
 
                 return ResponseEntity.ok("{\"token\": \"" + token + "\"}");
             }
         }
 
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Credenciales inválidas");
+    }
+
+    private String resolveClientIp(HttpServletRequest request) {
+        String forwarded = request.getHeader("X-Forwarded-For");
+        if (forwarded != null && !forwarded.isBlank()) {
+            return forwarded.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
     }
 
     @PostMapping("/validate")
