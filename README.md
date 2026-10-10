@@ -53,7 +53,7 @@ POST /auth/validate  ← called by the Gateway on every request
 | Framework | Spring Boot 3.3.5 |
 | Security | Spring Security + JJWT (HS256) + BCrypt |
 | Database | Spring Data JPA + MySQL (Aiven) |
-| Token blacklist | Redis (Railway) |
+| Token blacklist | Redis 7.2 (self-hosted, same Docker network) |
 | Docs | SpringDoc OpenAPI 3 (Swagger UI) |
 | Build | Gradle |
 | Deploy | Docker · Hetzner VPS · GitHub Actions CI/CD |
