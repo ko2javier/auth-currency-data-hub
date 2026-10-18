@@ -23,6 +23,28 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-security'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    // Tests de integracion (2026-10-18): un MySQL y un Redis de verdad en
+    // contenedores. Las versiones las fija el BOM de Spring Boot. Kafka NO va:
+    // este servicio solo produce eventos (no hay ningun @KafkaListener), asi
+    // que el contexto arranca sin broker, y en los tests el productor se
+    // sustituye por un doble.
+    testImplementation 'org.testcontainers:testcontainers'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.testcontainers:mysql'
+    // Cliente HTTP de los tests. Sin esto, TestRestTemplate usa
+    // HttpURLConnection del JDK, que NO puede reintentar un POST cuando el
+    // servidor contesta 401 ("cannot retry due to server authentication, in
+    // streaming mode") y revienta justo en los tests cuya respuesta correcta
+    // es un 401. Con Apache HttpClient en el classpath, Spring Boot lo elige
+    // solo. La version la fija el BOM.
+    testImplementation 'org.apache.httpcomponents.client5:httpclient5'
+    // FALTABA, y sin esto los tests de este repo NO SE EJECUTAN: Gradle muere
+    // con "Failed to load JUnit Platform ... including the JUnit Platform
+    // launcher" antes de entrar en ninguna clase. No es un test en rojo, es la
+    // bateria entera sin arrancar, asi que nadie lo noto -- el Dockerfile
+    // construye con bootJar, que no ejecuta tests. currency-data-hub ya la
+    // tenia; este repo, no.
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
     runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'

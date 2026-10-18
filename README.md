@@ -55,8 +55,9 @@ POST /auth/validate  ← called by the Gateway on every request
 | Database | Spring Data JPA + MySQL (Aiven) |
 | Token blacklist | Redis 7.2 (self-hosted, same Docker network) |
 | Docs | SpringDoc OpenAPI 3 (Swagger UI) |
+| Tests | JUnit 5 + Testcontainers (real MySQL and Redis) — 9 integration tests |
 | Build | Gradle |
-| Deploy | Docker · Hetzner VPS · GitHub Actions CI/CD |
+| Deploy | GitHub Actions → ghcr.io → Hetzner VPS, pinned by commit SHA |
 
 ## Security design decisions
 
@@ -64,7 +65,33 @@ POST /auth/validate  ← called by the Gateway on every request
 
 **Token blacklist in Redis, not MySQL:** On every authenticated request the Gateway checks Redis (~1 ms) rather than querying the database. Redis key expiry mirrors token TTL so the blacklist is self-cleaning.
 
+**Logout and the gateway share a Redis key, not an API.** `logout` writes the token (without the `Bearer ` prefix) with a TTL equal to its remaining lifetime; the gateway only asks `hasKey(token)`. If either side changed the key shape the revoked token would keep working, with no error in either service — so a test pins the exact key, value and TTL.
+
 **Isolated auth boundary:** Downstream services (API Service) have no JWT dependency. The Gateway validates once and injects plain HTTP headers (`X-User-Name`, `X-User-Roles`). Swapping the auth mechanism only requires changes here and in the Gateway.
+
+## Tests
+
+```bash
+./gradlew test            # 9 tests, ~1 min
+```
+
+They need Docker: a **real MySQL and a real Redis** run in containers (Testcontainers). The login reads the user and its roles through a JPA many-to-many that a mock would never execute, and the logout writes the blacklist the gateway reads — the contract between the two services — so neither is mocked. Tables are created by Hibernate (`ddl-auto=update`), so there is no schema file to keep in sync. Kafka is not started: this service only produces events, and the producer is replaced by a test double.
+
+What they pin: the claims inside the issued token (subject, roles, one-hour expiry), the client IP taken from `X-Forwarded-For` for the login event, the same response for a wrong password and an unknown user, and the exact blacklist entry written by logout.
+
+**The suite was tested against itself.** Four faults were injected one at a time — storing the token with its `Bearer ` prefix, dropping the roles claim, ignoring `X-Forwarded-For`, and skipping the password check — and each turns the suite red.
+
+CI runs them on every push to `master` **before** anything is built or deployed.
+
+## Deployment
+
+```
+push to master ──▶ tests          9 tests, real MySQL + Redis via Testcontainers
+                     └──▶ build   image to ghcr.io, tagged `latest` and the commit SHA
+                            └──▶ deploy   SSH: pull that SHA, restart, wait for 200
+```
+
+Each stage gates the next. **The image is built here, not on the VPS**, which used to spend minutes of compilation and scarce RAM on every push. Deploys pin the commit SHA rather than `latest`, so the running container states which code it serves and a rollback is the same command with the previous SHA.
 
 ## Part of the KO2 Platform
 
